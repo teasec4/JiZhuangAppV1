@@ -1,10 +1,3 @@
-//
-//  AddTransactionView.swift
-//  JiZhuangAppV1
-//
-//  Created by Максим Ковалев on 9/13/25.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -12,28 +5,30 @@ struct AddTransactionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     
-    @Query private var wallets: [Wallet]
     @Query private var categories: [Category]
     
     @State private var amountText: String = ""
-    @State private var amount: Decimal = 0
     @State private var selectedCategory: Category?
-    @State private var selectedWallet: Wallet?
     @State private var note: String = ""
-    
     @State private var isIncome: Bool = false
     
+    var wallet: Wallet
+    var onCommit: (_ transaction: Transaction) -> Void
     
-    private func cancel(){
+    // Проверка готовности
+    private var canSubmit: Bool {
+        (Decimal(string: amountText).map { $0 > 0 } ?? false) && selectedCategory != nil
+    }
+    
+    private func cancel() {
         dismiss()
     }
     
-    var wallet: Wallet
-    
-    var onCommit: (_ transaction:Transaction) -> Void
-    
     private func commit() {
-        guard let category = selectedCategory, let wallet = selectedWallet, let amount = Decimal(string: amountText), amount > 0 else { return }
+        guard let category = selectedCategory,
+              let amount = Decimal(string: amountText),
+              amount > 0
+        else { return }
         
         let transaction = Transaction(
             amount: amount,
@@ -41,98 +36,113 @@ struct AddTransactionView: View {
             note: note,
             isIncome: isIncome,
             category: category,
-            wallet: wallet
+            wallet: wallet     // 💡 всегда используем переданный кошелёк
         )
         
         onCommit(transaction)
         dismiss()
     }
+    
     var body: some View {
-        NavigationStack{
-            ZStack{
-                (isIncome ? Color.green.opacity(0.05) : Color.red.opacity(0.05))
-                    .ignoresSafeArea()
-                VStack{
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    
+                    // 🔹 Переключатель доход/расход
                     HStack(spacing: 12) {
-                        Button {
+                        transactionTypeButton("Expense", active: !isIncome, color: .red) {
                             isIncome = false
-                        } label: {
-                            Text("Expense")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(!isIncome ? Color.red.opacity(0.2) : Color.gray.opacity(0.2))
-                                .foregroundColor(!isIncome ? .red : .primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        
-                        Button {
+                        transactionTypeButton("Income", active: isIncome, color: .green) {
                             isIncome = true
+                        }
+                    }
+                    
+                    // 🔹 Сумма
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Amount")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("0.00", text: $amountText)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 32, weight: .semibold, design: .rounded))
+                            .foregroundColor(isIncome ? .green : .red)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    
+                    // 🔹 Категория
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Category")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        NavigationLink {
+                            CategoryPickerView(isIncome: isIncome, user: wallet.user, selectedCategory: $selectedCategory)
                         } label: {
-                            Text("Income")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(isIncome ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
-                                .foregroundColor(isIncome ? .green : .primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    Form{
-                    
-                        Section("Amount") {
-                            TextField("Enter amount", text: $amountText)
-                                .keyboardType(.decimalPad)
-                                .foregroundColor(isIncome ? .green : .red)
-                        }
-                        
-                        Section("Category") {
-                            NavigationLink {
-                                CategoryPickerView(isIncome: isIncome,
-                                                   selectedCategory: $selectedCategory)
-                            } label: {
-                                HStack {
-                                    if let category = selectedCategory {
-                                        Text("\(category.emoji) \(category.name)")
-                                    } else {
-                                        Text("Choose category")
-                                            .foregroundColor(.secondary)
-                                    }
+                            HStack {
+                                if let category = selectedCategory {
+                                    Text("\(category.emoji) \(category.name)")
+                                        .font(.headline)
+                                } else {
+                                    Text("Choose category")
+                                        .foregroundColor(.secondary)
                                 }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
                             }
-                        }
-                        
-                        Section("Note") {
-                            TextField("Optional note", text: $note)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
                     }
+                    
+                    // 🔹 Заметка
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Note")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("Optional note", text: $note)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    
+                    Spacer()
                 }
+                .padding()
             }
-            .navigationTitle("Add transaction")
+            .background((isIncome ? Color.green.opacity(0.05) : Color.red.opacity(0.05)))
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("Add Transaction")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar{
-                ToolbarItem(placement: .cancellationAction){
-                    Button(action: cancel){
-                        Text("Cancel")
-                    }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: cancel)
                 }
-                ToolbarItem(placement: .confirmationAction){
-                    Button(action: commit){
-                        Text("Add")
-                    }
-                    .disabled(selectedCategory == nil || selectedWallet == nil)
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add", action: commit)
+                        .disabled(!canSubmit)
                 }
             }
             .onAppear {
-                // Автовыбор первого кошелька/категории для удобства
-                if selectedWallet == nil { selectedWallet = wallets.first }
                 if selectedCategory == nil {
-                        // пример: берём первую категорию дохода/расхода
-                        // (тут нужен @Query для категорий)
-                    }
+                    selectedCategory = categories.first(where: { $0.isIncome == isIncome }) ?? categories.first
+                }
             }
         }
     }
+    
+    // Вынес кнопки Expense/Income
+    private func transactionTypeButton(_ title: String, active: Bool, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(active ? color.opacity(0.2) : Color(.systemGray6))
+                .foregroundColor(active ? color : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
 }
-
-

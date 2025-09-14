@@ -26,7 +26,7 @@ struct DashboardView: View {
     var body: some View {
         ZStack{
             VStack(spacing:12){
-                BalanceCardView(walletName: wallet.name, balance:wallet.balance, currency: "USD")
+                BalanceCardView(walletName: wallet.name, balance:wallet.balance, currency: "￥")
                     .padding(.horizontal)
                 
                 List {

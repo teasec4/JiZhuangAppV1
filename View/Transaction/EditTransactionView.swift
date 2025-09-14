@@ -1,11 +1,3 @@
-//
-//  EditTransactionView.swift
-//  JiZhuangAppV1
-//
-//  Created by Максим Ковалев on 9/14/25.
-//
-
-
 import SwiftUI
 import SwiftData
 
@@ -13,12 +5,10 @@ struct EditTransactionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     
-    @Query private var wallets: [Wallet]
     @Query private var categories: [Category]
     
     @State private var amountText: String = ""
     @State private var selectedCategory: Category?
-    @State private var selectedWallet: Wallet?
     @State private var note: String = ""
     @State private var isIncome: Bool = false
     
@@ -36,96 +26,116 @@ struct EditTransactionView: View {
             if let category = selectedCategory {
                 transaction.category = category
             }
-            if let wallet = selectedWallet {
-                transaction.wallet = wallet
-            }
             try? context.save()
             dismiss()
         }
     }
     
+    private var canSave: Bool {
+        (Decimal(string: amountText).map { $0 > 0 } ?? false) && selectedCategory != nil
+    }
+    
     var body: some View {
         NavigationStack {
-            ZStack {
-                (isIncome ? Color.green.opacity(0.05) : Color.red.opacity(0.05))
-                    .ignoresSafeArea()
-                
-                VStack {
-                    HStack(spacing: 12) {
-                        Button {
-                            isIncome = false
-                        } label: {
-                            Text("Expense")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(!isIncome ? Color.red.opacity(0.2) : Color.gray.opacity(0.2))
-                                .foregroundColor(!isIncome ? .red : .primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        
-                        Button {
-                            isIncome = true
-                        } label: {
-                            Text("Income")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(isIncome ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
-                                .foregroundColor(isIncome ? .green : .primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                    }
-                    .padding(.horizontal)
+            ScrollView {
+                VStack(spacing: 20) {
                     
-                    Form {
-                        Section("Amount") {
-                            TextField("Enter amount", text: $amountText)
-                                .keyboardType(.decimalPad)
-                                .foregroundColor(isIncome ? .green : .red)
+                    // 🔹 Переключатель доход/расход
+                    HStack(spacing: 12) {
+                        transactionTypeButton("Expense", active: !isIncome, color: .red) {
+                            isIncome = false
                         }
-                        
-                        Section("Category") {
-                            NavigationLink {
-                                CategoryPickerView(isIncome: isIncome,
-                                                   selectedCategory: $selectedCategory)
-                            } label: {
-                                HStack {
-                                    if let category = selectedCategory {
-                                        Text("\(category.emoji) \(category.name)")
-                                    } else {
-                                        Text("Choose category")
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                            }
-                        }
-                        
-                        Section("Note") {
-                            TextField("Optional note", text: $note)
+                        transactionTypeButton("Income", active: isIncome, color: .green) {
+                            isIncome = true
                         }
                     }
+                    
+                    // 🔹 Сумма
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Amount")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("0.00", text: $amountText)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 32, weight: .semibold, design: .rounded))
+                            .foregroundColor(isIncome ? .green : .red)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    
+                    // 🔹 Категория
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Category")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        NavigationLink {
+                            CategoryPickerView(isIncome: isIncome, user: transaction.wallet.user, selectedCategory: $selectedCategory)
+                        } label: {
+                            HStack {
+                                if let category = selectedCategory {
+                                    Text("\(category.emoji) \(category.name)")
+                                        .font(.headline)
+                                } else {
+                                    Text("Choose category")
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                    }
+                    
+                    // 🔹 Заметка
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Note")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("Optional note", text: $note)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    
+                    Spacer()
                 }
+                .padding()
             }
-            .navigationTitle("Edit transaction")
+            .background((isIncome ? Color.green.opacity(0.05) : Color.red.opacity(0.05)))
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("Edit Transaction")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(action: cancel) {
-                        Text("Cancel")
-                    }
+                    Button("Cancel", action: cancel)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(action: saveChanges) {
-                        Text("Save")
-                    }
+                    Button("Save", action: saveChanges)
+                        .disabled(!canSave)
                 }
             }
             .onAppear {
                 amountText = "\(transaction.amount)"
-                selectedWallet = transaction.wallet
                 selectedCategory = transaction.category
                 note = transaction.note ?? ""
                 isIncome = transaction.isIncome
             }
+        }
+    }
+    
+    // 🔹 Универсальная кнопка переключателя
+    private func transactionTypeButton(_ title: String, active: Bool, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(active ? color.opacity(0.2) : Color(.systemGray6))
+                .foregroundColor(active ? color : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 }

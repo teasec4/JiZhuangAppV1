@@ -31,9 +31,6 @@ struct ProfileView: View {
                             VStack(alignment: .leading) {
                                 Text(user.name)
                                     .font(.headline)
-                                Text("ID: \(user.persistentModelID)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
                             }
                         }
                     }
