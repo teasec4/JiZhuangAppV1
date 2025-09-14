@@ -27,10 +27,12 @@ struct ContentView: View {
                 ZStack{
                     TabView {
                         NavigationStack {
-                            if let wallet = wallets.first {
-                                DashboardView(wallet: wallet)
+                            if wallets.isEmpty {
+                                // нет кошельков — предлагаем создать
+                                CreateWalletView(user: users[0])
                             } else {
-                                CreateWalletView()
+                                // ⚠️ НОВЫЙ DashboardView без параметров
+                                DashboardView()
                             }
                         }
                         
