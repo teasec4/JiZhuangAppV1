@@ -4,95 +4,116 @@ import SwiftData
 struct CreateWalletView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    
-    let user: User
+    var user: User
     
     @State private var name: String = ""
-    @State private var startingBalance: Decimal = 0
+    @State private var selectedColor: String = "#2196F3"
+    @State private var startBalance: String = ""
     
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    let colors: [String] = [
+        "#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336"
+    ]
+    
+    var body: some View {
+        VStack {
+            Form {
+                Section("Wallet Info") {
+                    TextField("Wallet name", text: $name)
+                    TextField("Start balance", text: $startBalance)
+                        .keyboardType(.decimalPad)
+                }
+                
+                Section("Card Color") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(colors, id: \.self) { hex in
+                                Circle()
+                                    .fill(Color(hex: hex))
+                                    .frame(width: 40, height: 40)
+                                    .overlay(
+                                        Circle().stroke(selectedColor == hex ? Color.primary : .clear, lineWidth: 2)
+                                    )
+                                    .onTapGesture {
+                                        selectedColor = hex
+                                    }
+                            }
+                        }
+                        .padding(.vertical, 6)
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            
+            // 🔽 Превью-кнопка
+            Button(action: saveWallet) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(name.isEmpty ? "New Wallet" : name)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        let balanceDecimal = Decimal(string: startBalance.replacingOccurrences(of: ",", with: ".")) ?? 0
+                        Text("\(balanceDecimal, format: .currency(code: "CNY"))")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(spacing: 4) {
+                        Text("Create")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, minHeight: 80)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(hex: selectedColor))
+                        .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
+                )
+                .padding(.horizontal)
+            }
+            .disabled(name.isEmpty)
+            .opacity(name.isEmpty ? 0.5 : 1)
+            .padding(.vertical, 12)
+        }
+        .navigationTitle("Create Wallet")
     }
     
-    private func save() {
-        // 1. Создаём кошелёк с балансом 0
-        let wallet = Wallet(name: name, balance: 0, user: user)
+    // MARK: - Save Logic
+    private func saveWallet() {
+        let wallet = Wallet(name: name, user: user, colorHex: selectedColor)
         context.insert(wallet)
         
-        // 2. Если введён стартовый баланс → пишем транзакцию в категорию "Salary"
-        if startingBalance > 0 {
-            // ищем категорию "Salary" у пользователя
-            let salaryCategory = (try? context.fetch(FetchDescriptor<Category>()))?
-                .first(where: { $0.user == user && $0.name == "Salary" && $0.isIncome })
+        if let amount = Decimal(string: startBalance.replacingOccurrences(of: ",", with: ".")),
+           amount > 0 {
             
-            // если нет — создаём новую
-            let category = salaryCategory ?? Category(
-                name: "Salary",
-                emoji: "💼",
-                isIncome: true,
-                user: user
-            )
-            if salaryCategory == nil {
-                context.insert(category)
+            let fetch = FetchDescriptor<Category>()
+            if let salaryCategory = try? context.fetch(fetch).first(where: { $0.name == "Salary" && $0.user.id == user.id }) {
+                let tx = Transaction(amount: amount,
+                                     note: "Initial balance",
+                                     isIncome: true,
+                                     category: salaryCategory,
+                                     wallet: wallet)
+                context.insert(tx)
+            } else {
+                let salaryCategory = Category(name: "Salary", emoji: "💼", isIncome: true, user: user)
+                context.insert(salaryCategory)
+                let tx = Transaction(amount: amount,
+                                     note: "Initial balance",
+                                     isIncome: true,
+                                     category: salaryCategory,
+                                     wallet: wallet)
+                context.insert(tx)
             }
-            
-            let tx = Transaction(
-                amount: startingBalance,
-                date: Date(),
-                note: "Initial balance",
-                isIncome: true,
-                category: category,
-                wallet: wallet
-            )
-            context.insert(tx)
         }
         
         try? context.save()
         dismiss()
-    }
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    
-                    // 🔹 Поля для заполнения
-                    VStack(spacing: 16) {
-                        TextField("Wallet name", text: $name)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                        
-                        TextField("Starting balance", value: $startingBalance, format: .number)
-                            .keyboardType(.decimalPad)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                    .padding(.horizontal)
-                    
-                    // 🔹 Кнопка создать
-                    Button(action: save) {
-                        Text("Create Wallet")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(canSave ? Color.blue : Color.gray.opacity(0.4))
-                            .foregroundColor(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                    .padding(.horizontal)
-                    .disabled(!canSave)
-                    
-                    Spacer()
-                }
-                .padding(.top, 20)
-            }
-            .navigationTitle("New Wallet")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
     }
 }

@@ -8,21 +8,22 @@ import Foundation
 import SwiftData
 
 @Model
-final class Transaction{
+final class Transaction {
     @Attribute(.unique) var id: UUID
     var amount: Decimal
     var date: Date
     var note: String?
     var isIncome: Bool
     
-    // Relationships
-    var category: Category
+    // ✅ теперь категория может быть nil
+    @Relationship(deleteRule: .nullify, inverse: \Category.transactions)
+    var category: Category?
     var wallet: Wallet
     
     init(amount: Decimal,
-         date: Date = Date(),
+         date: Date = .now,
          note: String? = nil,
-         isIncome: Bool = false,
+         isIncome: Bool,
          category: Category,
          wallet: Wallet) {
         self.id = UUID()

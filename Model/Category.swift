@@ -16,7 +16,7 @@ final class Category {
 
     var user: User
 
-    @Relationship(deleteRule: .cascade, inverse: \Transaction.category)
+   
     var transactions: [Transaction] = []
 
     init(name: String, emoji: String, isIncome: Bool, user: User) {

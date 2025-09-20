@@ -9,20 +9,23 @@ import SwiftData
 
 
 @Model
-final class Wallet {
+final class Wallet:Identifiable {
     @Attribute(.unique) var id: UUID
     var name: String
-    
-    var user: User
+    var colorHex: String
     
     // Relationships
     @Relationship(deleteRule: .cascade, inverse: \Transaction.wallet)
     var transactions: [Transaction] = []
     
-    init(name: String, balance: Decimal = 0, user: User) {
+    @Relationship(deleteRule: .nullify, inverse: \Category.user)
+        var user: User
+    
+    init(name: String, balance: Decimal = 0, user: User, colorHex: String = "#2196F3") {
         self.id = UUID()
         self.name = name
         self.user = user
+        self.colorHex = colorHex
     }
     
     var balance: Decimal {

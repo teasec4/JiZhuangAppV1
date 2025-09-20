@@ -1,34 +1,29 @@
-//
-//  TransactionListView.swift
-//  JiZhuangAppV1
-//
-//  Created by Максим Ковалев on 9/13/25.
-//
-
 import SwiftUI
 
 struct TransactionRowView: View {
     var transaction: Transaction
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             // 🔹 Иконка категории
-            Text(transaction.category.emoji)
+            Text(transaction.category?.emoji  ?? "❓")
                 .font(.title2)
                 .frame(width: 44, height: 44)
                 .background(
                     Circle()
-                        .fill(transaction.isIncome ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
-                )
-                .overlay(
-                    Circle()
-                        .stroke(transaction.isIncome ? Color.green.opacity(0.4) : Color.red.opacity(0.4), lineWidth: 1)
+                        .fill(
+                            LinearGradient(
+                                colors: transaction.isIncome ? [.green, .mint] : [.red, .pink],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                 )
             
-            // 🔹 Основной текст
             VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.category.name)
+                Text(transaction.category?.name ?? "Unknown Category")
                     .font(.headline)
+                    .foregroundColor(.primary)
                 
                 if let note = transaction.note, !note.isEmpty {
                     Text(note)
@@ -44,19 +39,19 @@ struct TransactionRowView: View {
             
             Spacer()
             
-            // 🔹 Сумма
             Text("\(transaction.isIncome ? "+" : "-")\(transaction.amount, format: .number) ￥")
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundColor(transaction.isIncome ? .green : .red)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
+        .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.systemGray6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.gray.opacity(0.15), lineWidth: 0.8)
+                )
+                .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
         )
     }
 }
-
-
