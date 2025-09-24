@@ -86,7 +86,7 @@ struct WalletDetailView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
+                .listStyle(.plain)
                 .scrollContentBackground(.hidden)
             }
         }

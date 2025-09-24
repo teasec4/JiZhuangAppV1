@@ -17,37 +17,39 @@ struct DashboardView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                // 🔹 Список кошельков
-                ForEach(wallets, id: \.id) { wallet in
-                    NavigationLink(destination: WalletDetailView(wallet: wallet)) {
-                        WalletRowView(wallet: wallet)
-                        
-                    }
-                }
-                .onDelete(perform: deleteWallets)
-                
-                // 🔹 Строка "Создать кошелёк"
-                // Навигация на форму создания
-                if let user = users.first {
-                    NavigationLink {
-                        CreateWalletView(user: user)
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.blue)
-                            Text("Create Wallet")
-                                .font(.headline)
-                                .foregroundColor(.blue)
-                            Spacer()
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    
+                    // 🔹 Список кошельков
+                    ForEach(wallets, id: \.id) { wallet in
+                        NavigationLink(destination: WalletDetailView(wallet: wallet)) {
+                            WalletRowView(wallet: wallet)
+                                .padding(.horizontal)
                         }
-                        .padding(.vertical, 6)
+                    }
+                    
+                    // 🔹 Строка "Создать кошелёк"
+                    if let user = users.first {
+                        NavigationLink {
+                            CreateWalletView(user: user)
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                                Text("Create Wallet")
+                                    .font(.headline)
+                                    .foregroundColor(.blue)
+                                Spacer()
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal)
+                        }
                     }
                 }
+                .padding(.top, 12)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showCreateWallet) {

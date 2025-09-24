@@ -36,7 +36,7 @@ struct WalletRowView: View {
             }
             .padding()
         }
-        .frame(maxWidth: .infinity, minHeight: 100)  // 🔹 растянул ширину
+        .frame(maxWidth: .infinity, minHeight: 100)
              
     }
     

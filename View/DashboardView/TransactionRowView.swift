@@ -43,7 +43,7 @@ struct TransactionRowView: View {
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundColor(transaction.isIncome ? .green : .red)
         }
-        .padding(16)
+        .padding()
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.systemGray6))
